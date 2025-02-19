@@ -9,9 +9,12 @@ import SwiftUI
 
 @main
 struct SonerimTestTaskApp: App {
+    
+    @State private var rootModel:RootModel = RootModel()
+    
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            RootView(rootModel: rootModel)
         }
     }
 }
