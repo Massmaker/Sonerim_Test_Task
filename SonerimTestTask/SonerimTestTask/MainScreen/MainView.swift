@@ -29,6 +29,7 @@ struct MainView: View {
                         }) { postId, category in
                             viewModel.onPostAppear(postId, in: category)
                         }
+                        
                     }
                 }
                 

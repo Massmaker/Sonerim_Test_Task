@@ -17,61 +17,41 @@ struct PostsHorizontalView: View {
         VStack(alignment: .leading) {
             
             Text(category.name)
-                .font(.title3)
+                .font(.title2)
+                .fontWeight(.semibold)
             
-            ScrollView(.horizontal, content: {
-                
-                
-                LazyHStack(spacing:16) {
-                    
-                    ForEach(posts, content: { aPost in
-                        VStack {
-                            if let image = aPost.image {
-                                Image(uiImage:image)
-                                    .resizable()
-                                    .scaledToFill()
-                                    .frame(width:100, height:100, alignment:.center)
-                                    .clipped()
-                                    .contentShape(Rectangle())
-                                    
-                            }
-                            else {
-                                Image(systemName: "circle.square")
-                                    .resizable()
-                                    .frame(maxWidth:100, maxHeight:80)
-                                    .aspectRatio(contentMode: .fit)
-                            }
+            ScrollView(.horizontal) {
+                    LazyHStack {
+                        
+                        ForEach(posts,
+                                content: { aPost in
                             
-                            Spacer()
-                            Text(aPost.title)
-                                .foregroundStyle(.secondary)
-                                .font(.caption)
-                                .lineLimit(3)
-                            Spacer()
-                        }
-                        .frame(width:100)
-                        .frame(maxHeight:170)
-                        .border(Color.secondary, width: 1)
-                        .onTapGesture {
-                            postSelection(aPost)
-                        }
+                                PostItemCellView(
+                                    image: aPost.image,
+                                    title: aPost.title
+                                )
+                                .frame(width:100)
+                                
+                                .onTapGesture {
+                                    postSelection(aPost)
+                                }
+                                .onAppear {
+                                    onPostAppear(aPost.id,category)
+                                }
+                                //.border(Color.green)
+                                //.padding(.horizontal)
+                        })
                         
-                        .onAppear {
-                            onPostAppear(aPost.id, category)
-                        }
-                        
-                        
+                    }
+                    .frame(maxHeight:190)
+                    .overlay(content:{
+                        Rectangle()
+                            .stroke(Color.primary, lineWidth: 1.0)
                     })
-                        
-                    Spacer(minLength: 8)
-                }
-                
-                
-                
-            })
+            }
+           
         }
-        
-        .frame(height:170)
+        .frame(height:190)
         
         
         
