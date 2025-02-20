@@ -8,34 +8,93 @@
 import SwiftUI
 
 struct FlickPostDetailsView: View {
+    /// Supply the default image if no image for a post is present
+    let image:UIImage
+    let title:String
+    var postData:[(title:String, value:String)]
+    private var largeImageURL:URL?
+    var goHomeAction:() -> ()
     
-    var post:PostInfo
-    
+    init(image: UIImage, title: String, postData: PrintableSortedValuesContainer, dismissAction action:@escaping () -> () ) {
+        self.image = image
+        self.title = title
+        
+        let postData = postData.printableSortedValues
+            .filter({$0.0 != "title"})//fast hack to remode the "title: " description item under the main Title
+        
+        if let string = postData.first(where: { (title: String, value: String) in
+            title == "_largeImage_"
+        })?.1,
+           let url = URL(string:string) {
+            self.largeImageURL = url
+        }
+                         
+        self.postData = postData
+        self.goHomeAction = action
+    }
     var body: some View {
-        VStack {
-            if let uiImage = post.image {
-                Image(uiImage: uiImage)
+        VStack(spacing: 16) {
+            if let largeImageURL {
+                AsyncImage(url: largeImageURL) { image in
+                    image
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                } placeholder: {
+                    Image(uiImage: image)
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                }
+
+            }
+            else {
+                Image(uiImage: image)
                     .resizable()
                     .aspectRatio(contentMode: .fit)
             }
-            else {
-                Text("No Image")
-                    .padding()
-                    .background(in: RoundedRectangle(cornerRadius: 13))
-                    
-            }
-           
-            Text(post.title)
-                .font(.title)
             
-            Text(post.details)
-                .font(.body)
+            
+            ScrollView {
+                VStack (alignment: .leading) {
+                    
+                    Text(title)
+                        .font(.title)
+                        .padding()
+                    
+                    ForEach(postData, id: \.0, content: { info in
+                        HStack {
+                            Text("\(info.0) :")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            
+                            Text(info.1)
+                                .font(.body)
+                        }
+                        .padding()
+                    })
+                    
+                    
+                    
+                    
+                    
+                }
+            }
+            
         }
         .frame(maxWidth: .infinity, maxHeight:.infinity)
+        .toolbar {
+            ToolbarItem(placement: .bottomBar, content: {
+                Button(action:{
+                    goHomeAction()
+                },
+                       label: {Text("Home")})
+                    
+                Spacer()
+            })
+        }
         
     }
 }
 
 #Preview {
-    FlickPostDetailsView(post: PostInfo(title: "Post title", details: "re-record Delicate fuck the patriarchy cats quill indie surprise 22 stained glass windows in my mind merch debut Grammy no, it's becky song stadium Red twang guitar (10 Minute Version) casette Elvira soft i had a marvelous time ruining everything august pop here's how Cruel Summer can still be a single snake Red you need to calm down producer", image: nil, id: "https://live.staticflickr.com/65535/54335630356_ed0d540d24_m.jpg"))
+    FlickPostDetailsView(image: UIImage(named: "DummyImage")!, title: PostItem.dummy1.title, postData: PostItem.dummy1, dismissAction: {})
 }

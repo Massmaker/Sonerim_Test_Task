@@ -7,7 +7,12 @@
 
 import Foundation
 import Combine
-
+import OSLog
+#if DEBUG
+fileprivate let logger = Logger(subsystem: "DataLoading", category: "MainViewDataLoader")
+#else
+fileprivate let logger = Logger(.disabled)
+#endif
 protocol MainViewDataLoading {
     
     func loadMainViewPosts(forCategories categories:[ItemCategory]) async -> [ItemCategory:[PostItem]]
@@ -36,7 +41,7 @@ actor MainViewDataLoader: MainViewDataLoading {
                     
                 do{
                     let responsePerCategory = try await requestService.request(itemsRequest)
-                    
+                    logger.notice("Finished loading posts info for \"\(aCat.name)\"")
                     if let response = responsePerCategory as? CategoryItemsResponse {
                         
                         if !response.items.isEmpty {

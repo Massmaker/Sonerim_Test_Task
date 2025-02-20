@@ -6,17 +6,50 @@
 //
 
 import Foundation
+import Observation
+import UIKit
 
-final class RootModel:ObservableObject {
-    lazy var mainViewModel:MainViewViewModel = {
-        let vm = Factory.createMainViewViwModel()
-        return vm
+@MainActor
+@Observable
+final class RootModel {
+    
+    var postDetails:PostDetails?
+    var categories:[ItemCategory]
+    @ObservationIgnored private var imageCache:ImageCache // actor
+    @ObservationIgnored private var postsStore:PostsDataCache //actor
+    
+    @ObservationIgnored lazy var mainViewModel:MainViewViewModel = {
+        
+        let mainModel = Factory.createMainModel(forCategories: categories,
+                                                postDataStore: postsStore,
+                                                imageCache: imageCache)
+        
+        mainModel.setPostForCategoryHandler {[unowned self] category, selectedPostInfo in
+            
+            let image = selectedPostInfo.image ?? UIImage(named: "DummyImage")!
+            
+            Task {[image] in
+                
+                do {
+                    let storedPostData = try await postsStore.postItem(inCategory: category, forPostInfo: selectedPostInfo)
+                    
+                    self.postDetails = PostDetails(title: storedPostData.title, image: image, detailsContainer: storedPostData)
+                    
+                }
+                catch (let postsStoreError) {
+#if DEBUG
+                    print("Error finding tapped post: \(postsStoreError)")
+#endif
+                }
+            }
+        }
+        
+        let viewModel = MainViewViewModel(model: mainModel)
+        
+        return viewModel
     }()
-}
-
-
-fileprivate class Factory {
-    static func createMainViewViwModel() -> MainViewViewModel {
+    
+    init() {
         
         var categories:[ItemCategory] = []
         
@@ -41,22 +74,49 @@ fileprivate class Factory {
             }
         }
         
+        self.categories = categories
+        
+        let requestsService = Factory.createRequestsService()
+        
+        let mainViewDataLoader = MainViewDataLoader(service: requestsService)
+        
+        self.imageCache = ImageCache(service: requestsService)
+        self.postsStore = PostsDataCache(categories: categories, loader: mainViewDataLoader)
+    }
+}
+
+extension RootModel {
+    func postDetailsGoHomeAction() {
+        self.postDetails = nil
+    }
+}
+
+fileprivate class Factory {
+    @MainActor
+    static func createMainModel(forCategories categories:[ItemCategory],
+                                postDataStore: some PostsDataStore,
+                                imageCache: some DataForURLCache) -> MainViewModel {
+        
+        let mainModel = MainViewModel(categories: categories,
+                                      dataCache: postDataStore,
+                                      imagesCache: imageCache) { _, _ in
+            
+        }
+        
+        return mainModel
+    }
+    
+    static func createURLSession() -> URLSession {
         let aURLSession = URLSession(configuration: .default)
+        return aURLSession
+    }
+    
+    static func createRequestsService() -> URLSessionRequestService {
+        let session = createURLSession()
+        let jsonDecoder = newJSONDecoder()
+        let requestsService = URLSessionRequestService(session: session, decoder: jsonDecoder)
         
-        let jsonDecoder = JSONDecoder()
-        jsonDecoder.dateDecodingStrategy = .iso8601
-        jsonDecoder.keyDecodingStrategy = .convertFromSnakeCase
-        
-        let requestsService = URLSessionRequestService(session: aURLSession, decoder: jsonDecoder)
-        
-        let imageCache = ImageCache(service: requestsService)
-        
-        
-        let mainVM = MainViewViewModel(categories: categories,
-                          dataLoader: MainViewDataLoader(service:requestsService),
-                          imagesSource: imageCache)
-                     
-        return mainVM
+        return requestsService
     }
 }
 

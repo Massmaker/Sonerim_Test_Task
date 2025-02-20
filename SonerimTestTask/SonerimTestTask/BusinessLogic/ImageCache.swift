@@ -12,7 +12,7 @@ import UIKit
 typealias Link = String
 
 protocol DataForURLCache {
-    func readData(forLink link:String) async -> Data?
+    func readData(forLink link:Link) async -> Data?
 }
 
 

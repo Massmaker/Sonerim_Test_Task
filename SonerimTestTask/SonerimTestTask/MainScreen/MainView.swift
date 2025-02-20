@@ -37,13 +37,22 @@ struct MainView: View {
                 
             }//end vertical scroll
             
+            
+        }
+        .onAppear{
+            DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(250), execute: {
+                viewModel.onViewAppear()
+            })
+            
+        }
+        .overlay {
             if viewModel.isLoading {
                 ProgressView("Loading...")
                     .progressViewStyle(.circular)
+                    .padding()
+                    .background(.thinMaterial)
+                    .clipShape(RoundedRectangle(cornerRadius: 16))
             }
-        }
-        .onAppear{
-            viewModel.onViewAppear()
         }
     }
 }

@@ -10,6 +10,9 @@ enum LogicError:Error {
     case emptyInputValue
 }
 
+enum SearchError:Error {
+    case notFound
+}
 
 enum ResponseError:Error {
     case invalidStatusCode(Int)

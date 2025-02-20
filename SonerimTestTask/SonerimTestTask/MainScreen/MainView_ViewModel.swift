@@ -7,13 +7,13 @@
 
 import Foundation
 
-
+@MainActor
 final class MainViewViewModel {
     
     let model:MainViewModel
     
-    init(categories:[ItemCategory], dataLoader loader: some MainViewDataLoading, imagesSource: ImageCache) {
-        model = MainViewModel(categories: categories, dataLoader: loader, imagesCache: imagesSource)
+    init(model:MainViewModel ) {
+        self.model = model
     }
     
     func onViewAppear() {
@@ -27,7 +27,7 @@ final class MainViewViewModel {
     }
     
     func uiSelectPost(_ post:PostInfo, in category:ItemCategory) {
-        
+        model.selectPost(post, inCategory: category)
     }
 }
 

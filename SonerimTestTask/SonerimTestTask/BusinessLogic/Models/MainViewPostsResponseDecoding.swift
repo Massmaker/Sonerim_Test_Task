@@ -35,6 +35,57 @@ struct PostItem: Decodable, Hashable {
     let author: String
     let authorId: String
     let tags: String
+    
+}
+
+protocol PrintableSortedValuesContainer {
+    var printableSortedValues:[(String,String)] {get}
+}
+
+protocol MediaURLsContainer {
+    var mediaURLString:String {get}
+}
+
+extension PostItem:PrintableSortedValuesContainer {
+    var printableSortedValues:[(String,String)] {
+        let mirror = Mirror(reflecting: self)
+        
+        var result:[(String,String)] = []
+        
+        for (property, value) in mirror.children {
+//            if property == "description" || property == "media"{
+//                continue
+//            }
+            
+            guard let propertyName = property else {
+                continue
+            }
+            
+            if propertyName == "tags", let string = value as? String {
+                let tagsString = string
+                    .components(separatedBy: CharacterSet.whitespacesAndNewlines)//split to separate substrings
+                    .map({"#\($0)"})// prefix each substring with the "#" sign
+                    .joined(separator: " ")// resutn single string of substrings separated by whitespaces
+                
+                result.append((propertyName, tagsString))
+                continue
+            }
+            
+            if propertyName == "media", let media = value as? Media {
+                if media.m.hasSuffix("m.jpg"), let range = media.m.range(of: "m.jpg") {
+                    
+                    let bigImageURL = media.m.replacingCharacters(in: range, with: "b.jpg")
+                    result.append(("_largeImage_", bigImageURL))
+                }
+                
+                continue
+            }
+            
+            result.append((propertyName ,"\(value)"))
+        }
+        
+        return result
+    }
 }
 
 struct Media: Decodable, Hashable {

@@ -8,9 +8,8 @@
 import SwiftUI
 
 struct RootView: View {
-    @ObservedObject var rootModel:RootModel
     
-    @State private var selectedPostDetail:PostInfo?
+    let rootModel:RootModel
     
     var body: some View {
 //        VStack {
@@ -21,8 +20,11 @@ struct RootView: View {
 //        }
 //        .padding()
         
-        if let selectedPostDetail {
-            FlickPostDetailsView(post: selectedPostDetail)
+        if let details = rootModel.postDetails {
+            FlickPostDetailsView(image: details.image,
+                                 title: details.title,
+                                 postData: details.detailsContainer,
+                                 dismissAction: rootModel.postDetailsGoHomeAction)
         }
         else {
             MainView(viewModel: rootModel.mainViewModel)
