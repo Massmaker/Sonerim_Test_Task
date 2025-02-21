@@ -21,13 +21,21 @@ struct FlickPostDetailsView: View {
     var goHomeAction:() -> ()
     
     
-    //MARK: -
+    //MARK: - properties
+    //MARK: Handle Main Scroll
     @State private var naturalOffset: CGFloat = 0
-    @State private var titleOffset:CGFloat = 0
     @State private var isScrolling:Bool = false
     @State private var imageSize:CGSize = CGSize(width: 1, height: 1)
     @State private var imageOpacity:CGFloat = 1.0
     
+    //MARK: Handle Player presentation
+    @State private var isPlayerVisible:Bool = false
+    @State private var playerProgress:CGFloat = 0.0
+    @State private var playerPresentationDetent:PresentationDetent = .height(60)
+    
+    @State private var isPlayerPlaying:Bool = false
+//    @State private var playerProgress:CGFloat = 0.1
+    //
     
     //MARK: -
     init(image: UIImage, title: String,
@@ -110,7 +118,12 @@ struct FlickPostDetailsView: View {
         .safeAreaInset(edge: .bottom, content: {
             bottomButtonsContainer
         })
-        
+        .overlay(content: {
+            if isPlayerVisible {
+                PlayerContainerView(title: "Song Title Here", details: "Some Long Details for song HERE", playerProgress: $playerProgress)
+                .transition(.asymmetric(insertion: .move(edge: .bottom), removal: .move(edge: .bottom)))
+            }
+        })
     }
     
     @ViewBuilder
@@ -147,7 +160,7 @@ struct FlickPostDetailsView: View {
             .buttonStyle(.bordered)
             //
             Button(action:{
-                
+                isPlayerVisible = true
             },
                    label: {Text("Audio")}
             )
