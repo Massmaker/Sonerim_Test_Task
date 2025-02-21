@@ -7,6 +7,17 @@
 
 import Foundation
 
+// MARK: - Helper functions for creating encoders and decoders
+
+func newJSONDecoder() -> JSONDecoder {
+    let decoder = JSONDecoder()
+    decoder.keyDecodingStrategy = .convertFromSnakeCase
+    decoder.dateDecodingStrategy = .iso8601
+
+    return decoder
+}
+
+//MARK: - Decodaable Response
 struct CategoryItemsResponse: Decodable {
     let title: String
     let link: String
@@ -37,6 +48,12 @@ struct PostItem: Decodable, Hashable {
     let tags: String
     
 }
+
+struct Media: Decodable, Hashable {
+    let m: String
+}
+
+//MARK: - Extensions
 
 protocol PrintableSortedValuesContainer {
     var printableSortedValues: [(String,String)] {get}
@@ -85,38 +102,14 @@ extension PostItem:PrintableSortedValuesContainer {
 
 extension PostItem: MediaURLsContainer {
     var mediaURLString: String {
-        let mirror = Mirror(reflecting: self)
         
-        let optChild =  mirror.children.first(where: {(propName, value) in
-            if let name = propName, name == "media", let _ = value as? Media {
-                return true
-            }
-            return false
-        })
-        
-        if let mediaChild = optChild as? (String,Media) {
-            
-            let urlString = mediaChild.1.m
-            if urlString.hasSuffix("m.jpg"), let range = media.m.range(of: "m.jpg") {
-                
-                let bigImageURL = media.m.replacingCharacters(in: range, with: "b.jpg")
-                return bigImageURL
-            }
-            return urlString
+        guard media.m.hasSuffix("m.jpg"), let range = media.m.range(of: "m.jpg") else {
+            return media.m
         }
         
-        return ""
+        let bigImageURL = media.m.replacingCharacters(in: range, with: "b.jpg")
         
-    }
-}
-
-struct Media: Decodable, Hashable {
-    let m: String
-}
-
-extension Media {
-    var mediaURL:URL? {
-        URL(string:m)
+        return bigImageURL
     }
 }
 
@@ -127,15 +120,9 @@ extension PostItem {
     }
 }
 
-// MARK: - Helper functions for creating encoders and decoders
 
-func newJSONDecoder() -> JSONDecoder {
-    let decoder = JSONDecoder()
-    decoder.keyDecodingStrategy = .convertFromSnakeCase
-    decoder.dateDecodingStrategy = .iso8601
 
-    return decoder
-}
+
 
 
 /**
