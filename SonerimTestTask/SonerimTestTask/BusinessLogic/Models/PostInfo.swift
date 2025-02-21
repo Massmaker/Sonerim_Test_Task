@@ -10,14 +10,25 @@ import UIKit
 import Observation
 
 @Observable
-class PostInfo:Identifiable {
+class PostInfo {
     let title:String
     var image:UIImage?
-    var id:String
+    private var mediaURLString:String
     
-    init(title: String, image: UIImage? = nil, id: String) {
+    init(title: String, image: UIImage? = nil, mediaURLString: String) {
         self.title = title
         self.image = image
-        self.id = id
+        self.mediaURLString = mediaURLString
+    }
+}
+
+extension PostInfo:Identifiable {
+    var id:String {
+        get{
+            mediaURLString
+        }
+        set {
+            mediaURLString = newValue
+        }
     }
 }

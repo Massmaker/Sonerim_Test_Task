@@ -120,6 +120,13 @@ extension Media {
     }
 }
 
+extension PostItem {
+    /// - Returns: self.media.m
+    var postId:String {
+        media.m
+    }
+}
+
 // MARK: - Helper functions for creating encoders and decoders
 
 func newJSONDecoder() -> JSONDecoder {

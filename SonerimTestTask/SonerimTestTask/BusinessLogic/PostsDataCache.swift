@@ -49,7 +49,7 @@ actor PostsDataCache {
     func postItem(inCategory cat:ItemCategory, forPostInfo postInfo:PostInfo) async throws -> PostItem {
         
         if let loadedItems = cachedData[cat],
-           let firstIndex = loadedItems.firstIndex(where: {$0.media.m == postInfo.id}) {
+           let firstIndex = loadedItems.firstIndex(where: {$0.postId == postInfo.id}) {
             
             let postItem = loadedItems[firstIndex]
             return postItem

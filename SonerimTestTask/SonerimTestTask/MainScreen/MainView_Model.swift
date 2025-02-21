@@ -84,7 +84,7 @@ final class MainViewModel {
                 for (category, posts) in loadedItems {
                     
                     let uiPosts = posts.map({ item in
-                        return PostInfo(title: item.title, id: item.media.m)
+                        return PostInfo(title: item.title, mediaURLString: item.media.m)
                     })
                     
                     result[category] = uiPosts
