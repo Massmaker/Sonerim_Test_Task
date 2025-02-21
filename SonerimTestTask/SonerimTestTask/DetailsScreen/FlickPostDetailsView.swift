@@ -7,6 +7,11 @@
 
 import SwiftUI
 
+fileprivate struct TitleID:Hashable {
+    let text:String
+}
+
+@available(iOS 18.0, *)
 struct FlickPostDetailsView: View {
     /// Supply the default image if no image for a post is present
     let image:UIImage
@@ -15,12 +20,22 @@ struct FlickPostDetailsView: View {
     private var largeImageURL:URL?
     var goHomeAction:() -> ()
     
+    
+    //MARK: -
+    @State private var naturalOffset: CGFloat = 0
+    @State private var titleOffset:CGFloat = 0
+    @State private var isScrolling:Bool = false
+    @State private var imageSize:CGSize = CGSize(width: 1, height: 1)
+    @State private var imageOpacity:CGFloat = 1.0
+    
+    
+    //MARK: -
     init(image: UIImage, title: String, postData: PrintableSortedValuesContainer, dismissAction action:@escaping () -> () ) {
         self.image = image
         self.title = title
         
         let postData = postData.printableSortedValues
-            .filter({$0.0 != "title"})//fast hack to remode the "title: " description item under the main Title
+            .filter({$0.0 != "title" && $0.0 != "description"})//fast hack to remode the "title: " description item under the main Title
         
         if let string = postData.first(where: { (title: String, value: String) in
             title == "_largeImage_"
@@ -29,72 +44,144 @@ struct FlickPostDetailsView: View {
             self.largeImageURL = url
         }
                          
-        self.postData = postData
+        self.postData = postData.filter({$0.0 != "_largeImage_"})
         self.goHomeAction = action
     }
     var body: some View {
-        VStack(spacing: 16) {
-            if let largeImageURL {
-                AsyncImage(url: largeImageURL) { image in
-                    image
-                        .resizable()
-                        .aspectRatio(contentMode: .fit)
-                } placeholder: {
-                    Image(uiImage: image)
-                        .resizable()
-                        .aspectRatio(contentMode: .fit)
-                }
 
-            }
-            else {
-                Image(uiImage: image)
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-            }
+        ScrollView {
             
-            
-            ScrollView {
-                VStack (alignment: .leading) {
-                    
-                    Text(title)
-                        .font(.title)
-                        .padding()
-                    
-                    ForEach(postData, id: \.0, content: { info in
-                        HStack {
-                            Text("\(info.0) :")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                            
-                            Text(info.1)
-                                .font(.body)
-                        }
-                        .padding()
+            ImageContainerView(image: image, largeImageURL: largeImageURL)
+                .background(
+                    GeometryReader(content: { proxy in
+                        let frame = proxy.frame(in: .named("ScrollViewSpace"))
+                        Color.clear
+                            .preference(key: ViewSizeKey.self, value: frame.size)
                     })
-                    
-                    
-                    
-                    
-                    
-                }
-            }
+                )
+                .onPreferenceChange(ViewSizeKey.self, perform: {newSize in
+                    imageSize = newSize
+                })
+                .offset(y: naturalOffset)
+                .opacity(imageOpacity)
+                .zIndex(1) //keep the Image view under the text for it to be scrolled over the Image
+            
+            scrollableContent
+                .zIndex(1000)//keep the text above the image when scrolled towards the top
             
         }
-        .frame(maxWidth: .infinity, maxHeight:.infinity)
-        .toolbar {
-            ToolbarItem(placement: .bottomBar, content: {
-                Button(action:{
-                    goHomeAction()
-                },
-                       label: {Text("Home")})
+        .coordinateSpace(name:"ScrollViewSpace")
+        .onScrollGeometryChange(for: CGFloat.self,
+                                    of: { scrollGeoProxy in
+            scrollGeoProxy.contentOffset.y
+        },
+                                    action: { oldValue, newValue in
+            //keep the image header always at the top
+            naturalOffset = newValue
+            
+            // adjust opacity from 0.7 to 1.0 when the text is scrolled upwards
+            imageOpacity = min(1.0, max(0.7, (imageSize.height - naturalOffset) / imageSize.height))
+        })
+        .onScrollPhaseChange({ oldPhase, newPhase in
+            // Optional:
+            // adjust the bottom buttons horizontal view opacity for scrolling behaviour:
+            
+            if case .interacting = newPhase {
+                withAnimation(.linear(duration: 0.2)) {
+                    isScrolling = true
+                }
+                return
+            }
+            
+            if case .decelerating = newPhase {
+                withAnimation(.easeIn(duration:0.2)) {
+                    isScrolling = false
+                }
+                return
+            }
+            if case .idle = newPhase {
+                isScrolling = false
+            }
+            
+        })
+        .ignoresSafeArea(.container, edges: .top)
+        .safeAreaInset(edge: .bottom, content: {
+            bottomButtonsContainer
+        })
+        
+    }
+    
+    @ViewBuilder
+    private var scrollableContent: some View {
+        
+        //GeometryReader {_ in
+        VStack (alignment: .leading, spacing:16) {
+            VStack {
+                Text(title)
+                    .font(.title)
+                    .padding()
+            }
+            
+            ForEach(postData, id: \.0, content: { info in
+                HStack {
+                    Text("\(info.0) :")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                     
-                Spacer()
+                    Text(info.1)
+                        .font(.body)
+                }
+                .padding()
             })
         }
-        
+    }
+    
+    @ViewBuilder private var bottomButtonsContainer: some View {
+        HStack(spacing:16) {
+            Button(action:{
+                goHomeAction()
+            },
+                   label: {Text("Home")})
+            .buttonStyle(.bordered)
+            //
+            Button(action:{
+                
+            },
+                   label: {Text("Audio")}
+            )
+            .buttonStyle(.bordered)
+            //move buttons to the leading edge
+            Spacer()
+        }
+        .padding()
+        //.ignoresSafeArea(edges:.bottom)
+        .background(.ultraThinMaterial)
+        .opacity(isScrolling ? 0.6 : 1.0)
     }
 }
 
 #Preview {
-    FlickPostDetailsView(image: UIImage(named: "DummyImage")!, title: PostItem.dummy1.title, postData: PostItem.dummy1, dismissAction: {})
+    if #available(iOS 18.0, *) {
+        FlickPostDetailsView(image: UIImage(named: "DummyImage")!, title: PostItem.dummy1.title, postData: PostItem.dummy1, dismissAction: {})
+    } else {
+        // Fallback on earlier versions
+        Text("pre iOs 18 view")
+    }
+}
+
+
+struct ViewOffsetKey:PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value += nextValue()
+    }
+}
+
+struct ViewSizeKey:PreferenceKey {
+    static var defaultValue: CGSize = .zero
+    static func reduce(value: inout CGSize, nextValue: () -> CGSize) {
+        let nextSize = nextValue()
+        value.width += nextSize.width
+        value.height += nextSize.height
+    }
 }

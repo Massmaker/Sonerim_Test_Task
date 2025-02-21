@@ -21,10 +21,15 @@ struct RootView: View {
 //        .padding()
         
         if let details = rootModel.postDetails {
-            FlickPostDetailsView(image: details.image,
-                                 title: details.title,
-                                 postData: details.detailsContainer,
-                                 dismissAction: rootModel.postDetailsGoHomeAction)
+            if #available(iOS 18.0, *) {
+                FlickPostDetailsView(image: details.image,
+                                     title: details.title,
+                                     postData: details.detailsContainer,
+                                     dismissAction: rootModel.postDetailsGoHomeAction)
+            } else {
+                // Fallback on earlier versions
+                PreiOS18DetailsView()
+            }
         }
         else {
             MainView(viewModel: rootModel.mainViewModel)
