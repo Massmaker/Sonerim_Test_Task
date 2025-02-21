@@ -8,6 +8,7 @@
 import Foundation
 import Observation
 import UIKit
+import SwiftUI
 
 @MainActor
 @Observable
@@ -32,8 +33,9 @@ final class RootModel {
                 
                 do {
                     let storedPostData = try await postsStore.postItem(inCategory: category, forPostInfo: selectedPostInfo)
-                    
-                    self.postDetails = PostDetails(title: storedPostData.title, image: image, detailsContainer: storedPostData)
+                    withAnimation{
+                        self.postDetails = PostDetails(title: storedPostData.title, image: image, detailsContainer: storedPostData)
+                    }
                     
                 }
                 catch (let postsStoreError) {
@@ -87,7 +89,10 @@ final class RootModel {
 
 extension RootModel {
     func postDetailsGoHomeAction() {
-        self.postDetails = nil
+        withAnimation{
+            self.postDetails = nil
+        }
+        
     }
 }
 

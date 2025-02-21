@@ -39,6 +39,7 @@ struct MainView: View {
             
             
         }
+        .ignoresSafeArea(edges:.bottom)
         .onAppear{
             DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(250), execute: {
                 viewModel.onViewAppear()
