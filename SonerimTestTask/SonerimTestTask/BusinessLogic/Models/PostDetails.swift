@@ -12,9 +12,9 @@ final class PostDetails:ObservableObject {
     
     let title:String
     private(set) var image:UIImage
-    let detailsContainer:PrintableSortedValuesContainer
+    let detailsContainer:PrintableSortedValuesContainer & MediaURLsContainer
     
-    init(title: String, image: UIImage, detailsContainer: PrintableSortedValuesContainer) {
+    init(title: String, image: UIImage, detailsContainer: PrintableSortedValuesContainer & MediaURLsContainer) {
         self.title = title
         self.image = image
         self.detailsContainer = detailsContainer

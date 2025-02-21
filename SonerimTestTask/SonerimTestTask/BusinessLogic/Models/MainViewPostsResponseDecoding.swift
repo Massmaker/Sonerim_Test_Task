@@ -39,15 +39,15 @@ struct PostItem: Decodable, Hashable {
 }
 
 protocol PrintableSortedValuesContainer {
-    var printableSortedValues:[(String,String)] {get}
+    var printableSortedValues: [(String,String)] {get}
 }
 
 protocol MediaURLsContainer {
-    var mediaURLString:String {get}
+    var mediaURLString: String {get}
 }
 
 extension PostItem:PrintableSortedValuesContainer {
-    var printableSortedValues:[(String,String)] {
+    var printableSortedValues: [(String,String)] {
         let mirror = Mirror(reflecting: self)
         
         var result:[(String,String)] = []
@@ -71,13 +71,8 @@ extension PostItem:PrintableSortedValuesContainer {
                 continue
             }
             
-            if propertyName == "media", let media = value as? Media {
-                if media.m.hasSuffix("m.jpg"), let range = media.m.range(of: "m.jpg") {
-                    
-                    let bigImageURL = media.m.replacingCharacters(in: range, with: "b.jpg")
-                    result.append(("_largeImage_", bigImageURL))
-                }
-                
+            if propertyName == "media"{ //}, let media = value as? Media {
+                //don't include the Media in the returned results
                 continue
             }
             
@@ -85,6 +80,33 @@ extension PostItem:PrintableSortedValuesContainer {
         }
         
         return result
+    }
+}
+
+extension PostItem: MediaURLsContainer {
+    var mediaURLString: String {
+        let mirror = Mirror(reflecting: self)
+        
+        let optChild =  mirror.children.first(where: {(propName, value) in
+            if let name = propName, name == "media", let _ = value as? Media {
+                return true
+            }
+            return false
+        })
+        
+        if let mediaChild = optChild as? (String,Media) {
+            
+            let urlString = mediaChild.1.m
+            if urlString.hasSuffix("m.jpg"), let range = media.m.range(of: "m.jpg") {
+                
+                let bigImageURL = media.m.replacingCharacters(in: range, with: "b.jpg")
+                return bigImageURL
+            }
+            return urlString
+        }
+        
+        return ""
+        
     }
 }
 

@@ -30,21 +30,23 @@ struct FlickPostDetailsView: View {
     
     
     //MARK: -
-    init(image: UIImage, title: String, postData: PrintableSortedValuesContainer, dismissAction action:@escaping () -> () ) {
+    init(image: UIImage, title: String,
+         postData: some PrintableSortedValuesContainer,
+         mediaURLContainer: some MediaURLsContainer,
+         dismissAction action:@escaping () -> () ) {
+        
         self.image = image
         self.title = title
         
-        let postData = postData.printableSortedValues
+        let printableData = postData.printableSortedValues
             .filter({$0.0 != "title" && $0.0 != "description"})//fast hack to remode the "title: " description item under the main Title
         
-        if let string = postData.first(where: { (title: String, value: String) in
-            title == "_largeImage_"
-        })?.1,
-           let url = URL(string:string) {
+        let string = mediaURLContainer.mediaURLString
+        if !string.isEmpty, let url = URL(string:string) {
             self.largeImageURL = url
         }
                          
-        self.postData = postData.filter({$0.0 != "_largeImage_"})
+        self.postData = printableData
         self.goHomeAction = action
     }
     var body: some View {
@@ -162,7 +164,11 @@ struct FlickPostDetailsView: View {
 
 #Preview {
     if #available(iOS 18.0, *) {
-        FlickPostDetailsView(image: UIImage(named: "DummyImage")!, title: PostItem.dummy1.title, postData: PostItem.dummy1, dismissAction: {})
+        FlickPostDetailsView(image: UIImage(named: "DummyImage")!,
+                             title: PostItem.dummy1.title,
+                             postData: PostItem.dummy1,
+                             mediaURLContainer: PostItem.dummy1,
+                             dismissAction: {})
     } else {
         // Fallback on earlier versions
         Text("pre iOs 18 view")

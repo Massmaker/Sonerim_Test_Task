@@ -25,6 +25,7 @@ struct RootView: View {
                 FlickPostDetailsView(image: details.image,
                                      title: details.title,
                                      postData: details.detailsContainer,
+                                     mediaURLContainer: details.detailsContainer,
                                      dismissAction: rootModel.postDetailsGoHomeAction)
             } else {
                 // Fallback on earlier versions

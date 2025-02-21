@@ -25,7 +25,7 @@ struct ImageContainerView: View {
                     image
                         .resizable()
                         .aspectRatio(contentMode: .fit)
-                case .failure(let error):
+                case .failure:// (let error):
                     placeHolder
                     //we can display some error for loading the full size image if needed:
                         .overlay(alignment: .bottomTrailing, content: {
