@@ -15,6 +15,7 @@ struct MainView: View {
         ZStack {
             Color.accentColor
                 .opacity(0.5)
+                .ignoresSafeArea(edges:[.bottom, .top])
             
             ScrollView(.vertical) {
                 Spacer(minLength: 1)
@@ -39,7 +40,7 @@ struct MainView: View {
             
             
         }
-        .ignoresSafeArea(edges:.bottom)
+        
         .onAppear{
             DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(250), execute: {
                 viewModel.onViewAppear()
