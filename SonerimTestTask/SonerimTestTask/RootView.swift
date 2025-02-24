@@ -12,14 +12,7 @@ struct RootView: View {
     let rootModel:RootModel
     
     var body: some View {
-//        VStack {
-//            Image(systemName: "globe")
-//                .imageScale(.large)
-//                .foregroundStyle(.tint)
-//            Text("Hello, world!")
-//        }
-//        .padding()
-        
+
         if let details = rootModel.postDetails {
             if #available(iOS 18.0, *) {
                 FlickPostDetailsView(image: details.image,
@@ -28,7 +21,7 @@ struct RootView: View {
                                      mediaURLContainer: details.detailsContainer,
                                      dismissAction: rootModel.postDetailsGoHomeAction)
                 .environment(rootModel.playerStatus)
-                .transition(.asymmetric(insertion: .move(edge: .top), removal: .move(edge: .bottom)))
+                .transition(.asymmetric(insertion: .move(edge: .top), removal: .move(edge: .top)))
             } else {
                 // Fallback on earlier versions
                 PreiOS18DetailsView()
