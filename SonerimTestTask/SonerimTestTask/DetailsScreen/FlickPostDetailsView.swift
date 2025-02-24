@@ -54,6 +54,7 @@ struct FlickPostDetailsView: View {
         self.postData = printableData
         self.goHomeAction = action
     }
+    
     var body: some View {
         ZStack(alignment:.bottom) {
             ScrollView {
@@ -121,21 +122,16 @@ struct FlickPostDetailsView: View {
                 
                 
                 PlayerContainerView(title: "Song Title Here",
-                                    details: "Some Long Details for song HERE Some Long Details for song HERE Some Long Details for song HERE Some Long Details for song HERE",
-                                    playerProgress: $status.playerProgress,
-                                    dismissHandler: {
-                    playerStatus.isPlayerVisible = false
-                })
-                .transition(.asymmetric(insertion: .move(edge: .bottom), removal: .move(edge: .bottom)) )
+                                    details: "Some Long Details for song HERE Some Long Details for song HERE Some Long Details for song HERE Some Long Details for song HERE. ng HERE Some Long Details for song HERE Some Long Details for song HERE",
+                                    playerProgress: $status.playerProgress)
+                .transition(.move(edge: .bottom))
+//                .transition(.asymmetric(insertion: .move(edge: .bottom), removal: .move(edge: .bottom)) )
             }
             
         }
         .safeAreaInset(edge: .bottom, content: {
-            
             bottomButtonsContainer
-            
         })
-
     }
     
     @ViewBuilder
@@ -223,10 +219,4 @@ struct ViewSizeKey:PreferenceKey {
 
 
 //MARK: -
-import Observation
 
-@Observable final class PlayerStatus {
-    var isPlayerVisible:Bool = false
-    var playerProgress:CGFloat = 0.0
-    var isPlayerPlaying:Bool = false
-}
