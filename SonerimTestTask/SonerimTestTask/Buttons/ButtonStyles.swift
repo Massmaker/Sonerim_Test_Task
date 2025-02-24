@@ -32,7 +32,7 @@ extension Custom {
         var body: some View {
             
             label
-                .padding(24)
+                .padding(16)
                 .clipShape(Circle())
                 .background(content: {
                     Circle()

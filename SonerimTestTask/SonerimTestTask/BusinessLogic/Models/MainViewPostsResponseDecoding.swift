@@ -69,11 +69,15 @@ extension PostItem:PrintableSortedValuesContainer {
         
         var result:[(String,String)] = []
         
-        for (property, value) in mirror.children {
-//            if property == "description" || property == "media"{
-//                continue
-//            }
-            
+        let unwantedVKeys = Set(["title", "description", "media"])
+        
+        let filteredChildren = mirror.children.filter({
+            guard let propName = $0.0 else { return false }
+            return !unwantedVKeys.contains(propName)
+        })
+        
+        for (property, value) in filteredChildren {
+
             guard let propertyName = property else {
                 continue
             }
@@ -88,10 +92,7 @@ extension PostItem:PrintableSortedValuesContainer {
                 continue
             }
             
-            if propertyName == "media"{ //}, let media = value as? Media {
-                //don't include the Media in the returned results
-                continue
-            }
+            
             
             result.append((propertyName ,"\(value)"))
         }

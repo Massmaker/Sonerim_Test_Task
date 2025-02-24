@@ -16,6 +16,8 @@ final class RootModel {
     
     var postDetails:PostDetails?
     var categories:[ItemCategory]
+    var playerStatus:PlayerStatus = .init()
+    
     @ObservationIgnored private var imageCache:ImageCache // actor
     @ObservationIgnored private var postsStore:PostsDataCache //actor
     

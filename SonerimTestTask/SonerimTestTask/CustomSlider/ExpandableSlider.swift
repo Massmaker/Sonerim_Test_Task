@@ -46,7 +46,7 @@ struct ExpandableSlider<Overlay: View> {
     @GestureState private var isActive: Bool = false
     
     struct Configuration {
-        
+        var sliderHeight:CGFloat = 10
         var cornerRadius:CGFloat = 16
         var extraHeight:CGFloat = 26
         
@@ -126,10 +126,10 @@ extension ExpandableSlider:View {
             )
             
         }
-        .frame(height:20 + config.extraHeight)
+        .frame(height:config.sliderHeight + config.extraHeight)
         .mask {
             RoundedRectangle(cornerRadius: config.cornerRadius)
-                .frame(height: 20 + (isActive ? config.extraHeight : 0))
+                .frame(height: config.sliderHeight + (isActive ? config.extraHeight : 0))
         }
         .animation(.snappy(duration: (isActive ? 0.1 : 0.3)), value: isActive)
     }
@@ -139,19 +139,40 @@ extension ExpandableSlider:View {
     @Previewable @State var volumeLevel:CGFloat = 20
     NavigationStack {
         VStack {
-            ExpandableSlider(value: $volumeLevel, in: 0...100, overlay: {
-                HStack {
-                    Image(systemName:"speaker.wave.3.fill", variableValue: volumeLevel / 100)
-                    Spacer()
-                    Text(String(format:"%.1f", volumeLevel) + "%")
-                        .font(.callout)
-                }
-                .padding(.horizontal)
-            })
-            .padding()
+            VStack (alignment: .leading) {
+                ExpandableSlider(value: $volumeLevel, in: 0...100, overlay: {
+                    HStack {
+                        Image(systemName:"speaker.wave.3.fill", variableValue: volumeLevel / 100)
+                        Spacer()
+                        Text(String(format:"%.1f", volumeLevel) + "%")
+                            .font(.callout)
+                    }
+                    .padding(.horizontal)
+                })
+                .padding()
+                
+                Text("Default slider (extraHeight: \"26\")").font(.callout).foregroundStyle(.secondary)
+            }
             .border(Color.accentColor, width: 1)
-            .padding(16)
+            
+            
+            VStack(alignment: .leading) {
+                ExpandableSlider(value: $volumeLevel, in: 0...100, config: ExpandableSlider.Configuration(extraHeight:10), overlay: {
+                    HStack {
+                        Image(systemName:"speaker.wave.3.fill", variableValue: volumeLevel / 100)
+                        Spacer()
+                        Text(String(format:"%.1f", volumeLevel) + "%")
+                            .font(.callout)
+                    }
+                    .padding(.horizontal)
+                })
+                .padding()
+                
+                Text("With custom extraHeight: \"10\" ").font(.callout).foregroundStyle(.secondary)
+            }
+            .border(Color.accentColor, width: 1)
         }
+        .padding(16)
         .navigationTitle("Custom Slider Preview")
     }
 }

@@ -29,11 +29,8 @@ struct FlickPostDetailsView: View {
     @State private var imageOpacity:CGFloat = 1.0
     
     //MARK: Handle Player presentation
-    @State private var isPlayerVisible:Bool = false
-    @State private var playerProgress:CGFloat = 0.0
-    @State private var playerPresentationDetent:PresentationDetent = .height(60)
+    @Environment(PlayerStatus.self) var playerStatus
     
-    @State private var isPlayerPlaying:Bool = false
 //    @State private var playerProgress:CGFloat = 0.1
     //
     
@@ -47,7 +44,7 @@ struct FlickPostDetailsView: View {
         self.title = title
         
         let printableData = postData.printableSortedValues
-            .filter({$0.0 != "title" && $0.0 != "description"})//fast hack to remode the "title: " description item under the main Title
+            
         
         let string = mediaURLContainer.mediaURLString
         if !string.isEmpty, let url = URL(string:string) {
@@ -58,72 +55,87 @@ struct FlickPostDetailsView: View {
         self.goHomeAction = action
     }
     var body: some View {
-
-        ScrollView {
-            
-            ImageContainerView(image: image, largeImageURL: largeImageURL)
-                .background(
-                    GeometryReader(content: { proxy in
-                        let frame = proxy.frame(in: .named("ScrollViewSpace"))
-                        Color.clear
-                            .preference(key: ViewSizeKey.self, value: frame.size)
+        ZStack(alignment:.bottom) {
+            ScrollView {
+                
+                ImageContainerView(image: image, largeImageURL: largeImageURL)
+                    .background(
+                        GeometryReader(content: { proxy in
+                            let frame = proxy.frame(in: .named("ScrollViewSpace"))
+                            Color.clear
+                                .preference(key: ViewSizeKey.self, value: frame.size)
+                        })
+                    )
+                    .onPreferenceChange(ViewSizeKey.self, perform: {newSize in
+                        imageSize = newSize
                     })
-                )
-                .onPreferenceChange(ViewSizeKey.self, perform: {newSize in
-                    imageSize = newSize
-                })
-                .offset(y: naturalOffset)
-                .opacity(imageOpacity)
-                .zIndex(1) //keep the Image view under the text for it to be scrolled over the Image
-            
-            scrollableContent
-                .zIndex(1000)//keep the text above the image when scrolled towards the top
-            
-        }
-        .coordinateSpace(name:"ScrollViewSpace")
-        .onScrollGeometryChange(for: CGFloat.self,
-                                    of: { scrollGeoProxy in
-            scrollGeoProxy.contentOffset.y
-        },
-                                    action: { oldValue, newValue in
-            //keep the image header always at the top
-            naturalOffset = newValue
-            
-            // adjust opacity from 0.7 to 1.0 when the text is scrolled upwards
-            imageOpacity = min(1.0, max(0.7, (imageSize.height - naturalOffset) / imageSize.height))
-        })
-        .onScrollPhaseChange({ oldPhase, newPhase in
-            // Optional:
-            // adjust the bottom buttons horizontal view opacity for scrolling behaviour:
-            
-            if case .interacting = newPhase {
-                withAnimation(.linear(duration: 0.2)) {
-                    isScrolling = true
-                }
-                return
+                    .offset(y: naturalOffset)
+                    .opacity(imageOpacity)
+                    .zIndex(1) //keep the Image view under the text for it to be scrolled over the Image
+                
+                scrollableContent
+                    .zIndex(1000)//keep the text above the image when scrolled towards the top
+                
             }
-            
-            if case .decelerating = newPhase {
-                withAnimation(.easeIn(duration:0.2)) {
+            .coordinateSpace(name:"ScrollViewSpace")
+            .onScrollGeometryChange(for: CGFloat.self,
+                                        of: { scrollGeoProxy in
+                scrollGeoProxy.contentOffset.y
+            },
+                                        action: { oldValue, newValue in
+                //keep the image header always at the top
+                naturalOffset = newValue
+                
+                // adjust opacity from 0.7 to 1.0 when the text is scrolled upwards
+                imageOpacity = min(1.0, max(0.7, (imageSize.height - naturalOffset) / imageSize.height))
+            })
+            .onScrollPhaseChange({ oldPhase, newPhase in
+                // Optional:
+                // adjust the bottom buttons horizontal view opacity for scrolling behaviour:
+                
+                if case .interacting = newPhase {
+                    withAnimation(.linear(duration: 0.2)) {
+                        isScrolling = true
+                    }
+                    return
+                }
+                
+                if case .decelerating = newPhase {
+                    withAnimation(.easeIn(duration:0.2)) {
+                        isScrolling = false
+                    }
+                    return
+                }
+                if case .idle = newPhase {
                     isScrolling = false
                 }
-                return
-            }
-            if case .idle = newPhase {
-                isScrolling = false
+                
+            })
+            .ignoresSafeArea(.container, edges: .top)
+            
+            
+            //this is needed due to the Apple's new "Observation" framework and data updates monitoring/handling
+            @Bindable var status = playerStatus
+            
+            if playerStatus.isPlayerVisible {
+                
+                
+                PlayerContainerView(title: "Song Title Here",
+                                    details: "Some Long Details for song HERE Some Long Details for song HERE Some Long Details for song HERE Some Long Details for song HERE",
+                                    playerProgress: $status.playerProgress,
+                                    dismissHandler: {
+                    playerStatus.isPlayerVisible = false
+                })
+                .transition(.asymmetric(insertion: .move(edge: .bottom), removal: .move(edge: .bottom)) )
             }
             
-        })
-        .ignoresSafeArea(.container, edges: .top)
+        }
         .safeAreaInset(edge: .bottom, content: {
+            
             bottomButtonsContainer
+            
         })
-        .overlay(content: {
-            if isPlayerVisible {
-                PlayerContainerView(title: "Song Title Here", details: "Some Long Details for song HERE", playerProgress: $playerProgress)
-                .transition(.asymmetric(insertion: .move(edge: .bottom), removal: .move(edge: .bottom)))
-            }
-        })
+
     }
     
     @ViewBuilder
@@ -160,7 +172,10 @@ struct FlickPostDetailsView: View {
             .buttonStyle(.bordered)
             //
             Button(action:{
-                isPlayerVisible = true
+                withAnimation {
+                    playerStatus.isPlayerVisible.toggle()
+                }
+                
             },
                    label: {Text("Audio")}
             )
@@ -168,7 +183,8 @@ struct FlickPostDetailsView: View {
             //move buttons to the leading edge
             Spacer()
         }
-        .padding()
+        .padding(.horizontal)
+        .padding(.vertical, 8)
         //.ignoresSafeArea(edges:.bottom)
         .background(.ultraThinMaterial)
         .opacity(isScrolling ? 0.6 : 1.0)
@@ -203,4 +219,14 @@ struct ViewSizeKey:PreferenceKey {
         value.width += nextSize.width
         value.height += nextSize.height
     }
+}
+
+
+//MARK: -
+import Observation
+
+@Observable final class PlayerStatus {
+    var isPlayerVisible:Bool = false
+    var playerProgress:CGFloat = 0.0
+    var isPlayerPlaying:Bool = false
 }

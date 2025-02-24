@@ -27,6 +27,7 @@ struct RootView: View {
                                      postData: details.detailsContainer,
                                      mediaURLContainer: details.detailsContainer,
                                      dismissAction: rootModel.postDetailsGoHomeAction)
+                .environment(rootModel.playerStatus)
                 .transition(.asymmetric(insertion: .move(edge: .top), removal: .move(edge: .bottom)))
             } else {
                 // Fallback on earlier versions
