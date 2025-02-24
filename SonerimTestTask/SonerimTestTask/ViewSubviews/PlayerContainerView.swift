@@ -7,9 +7,9 @@
 
 import SwiftUI
 
-fileprivate let kMinimizedStateContentHeight:CGFloat = 100
+fileprivate let kMinimizedStateContentHeight:CGFloat = 100.0
 
-fileprivate let verticalThreshold:CGFloat = 16 //at almost top or bottom border of the visible Content make some animations
+fileprivate let kDragToAnimationThreshold:CGFloat = 100.0
 
 struct PlayerContainerView: View {
     
@@ -44,7 +44,7 @@ struct PlayerContainerView: View {
         
         var backgroundOpacity:CGFloat {
             if case .fraction(let value) = self {
-                return value * 0.5
+                return value * 0.5 + 0.03
             }
             
             if case .top = self {
@@ -60,7 +60,7 @@ struct PlayerContainerView: View {
     let details:String
     
     @Binding var playerProgress:CGFloat
-    var dismissHandler:()->()
+
 
     @Environment(PlayerStatus.self) var playerStatus
     
@@ -74,6 +74,9 @@ struct PlayerContainerView: View {
     @State private var topStateContentOrigin:CGFloat = 0.0
     @State private var bottomStateContentOrigin:CGFloat = 0.0
 
+    @State private var dragStartY:CGFloat = 0.0
+    @State private var currentDragOffsetY:CGFloat = 0.0
+    
     @GestureState private var isDragging:Bool = false
     
     var body: some View {
@@ -87,73 +90,54 @@ struct PlayerContainerView: View {
                     .opacity(dragEndState.backgroundOpacity)
                     .preference(key: ViewSizeKey.self, value: size)
                 
-                VStack() {
-                    
-                            
-                    if case .top = dragEndState  {
-                        VStack(spacing: 32) {
-                         
-                                textsView
-                                
-                                playerButtonsControls
-                                    .padding(.bottom, 16)
-                                
-                            }
-                            .padding(.horizontal)
-    
-                    }
-                    else {
-                        if case .fraction(let cGFloat) = dragEndState {
-                            playerButtonsControls
-                                .padding(.bottom, 16)
-                        }
-                        
-                    }
-                    
-                 
-                    VStack {
-                        if case .bottom = dragEndState {
-                            playerButtonsControls
-                        }
-                            
-                        //slider
-                        ExpandableSlider(value: $playerProgress, in: 0...1,config: .init(sliderHeight:10, extraHeight:10),overlay: {
-                            HStack {
-                                Text("Player Overlay text")
-                                Spacer()
-                            }
-                            .padding(.horizontal)
-                        })
-                    }
+                
+                VStack(spacing: 16) {
+                    Spacer()
+                    playerButtonsControls
                 }
-                //.frame(maxWidth: .infinity)
+                .frame(maxWidth:.infinity)
+                .padding(.bottom, dragEndState == .top ? 48 : 32)
                 .frame(height: playerViewContentHeight)
                 .background(.thickMaterial)
+                .overlay(alignment: .bottom, content: {
+                    ExpandableSlider(value: $playerProgress, in: 0...1,config: .init(sliderHeight:10, extraHeight:10),overlay: {
+                        HStack {
+                            Text("Player Overlay text")
+                            Spacer()
+                        }
+                        .padding(.bottom, 2)
+                        .padding(.horizontal)
+                    })
+                })
                 .overlay(alignment: .top, content: {
                     dragDownAndCloseControls
-                        .opacity(dragEndState.dependentOpacity)
+                        .opacity(dragEndState == .top ? 1.0 : (isDragging ? 0.2 : 0.0))
                 })
+                
+                
+                if case .top = dragEndState  {
+                    VStack( content: {
+                        textsView
+                            .padding(.horizontal)
+                            .padding(.top, 32)
+                        Spacer()
+                    })
+                    .frame(maxHeight:playerViewContentHeight)
+                }
             }
             .ignoresSafeArea(edges: [ .top])
             
         }
-        .onAppear(perform: {
-            print("On GeometryReader Appear")
-
-        })
         .gesture(DragGesture()
             .updating($isDragging, body: {_, inoutState, _ in
                 inoutState = true
             })
             .onChanged({ dragValue in
-                print("DRAG onChanged location:\(dragValue.location.y)")
-                let startPosY = dragValue.startLocation.y + verticalThreshold
-//                        if startPosY < topStateContentOrigin {
-//                            print("returning")
-//                            return
-//                        }
+                if dragStartY != dragValue.startLocation.y {
+                    dragStartY = dragValue.startLocation.y
+                }
                 
-                
+                currentDragOffsetY = dragValue.translation.height
                 
                 let verticalTranslation = dragValue.translation.height
                 
@@ -162,40 +146,42 @@ struct PlayerContainerView: View {
                 let absoluteDragTranslationY = abs(verticalTranslation)
                 
 
-                if !isDownWards, dragValue.location.y < (topStateContentOrigin + verticalThreshold) {
-                    dragEndState = .top
-                    return
+                if !isDownWards {
+                    
+                    if case .top = dragEndState, dragValue.startLocation.y > topStateContentOrigin {
+                        return
+                    }
+                    
+                    if dragValue.location.y < topStateContentOrigin , dragEndState != .top {
+                        dragEndState = .top
+                        return
+                    }
                 }
                 
-                if isDownWards, dragValue.location.y > (bottomStateContentOrigin - verticalThreshold) {
-                    dragEndState = .bottom
-                    print("Still Bottom")
-                    return
+                if isDownWards {
+                    
+                    if dragValue.location.y > bottomStateContentOrigin {
+                        dragEndState = .bottom
+                        return
+                    }
                 }
                     
                 
                 let draggableDistance = bottomStateContentOrigin - topStateContentOrigin
                 var currentDragFraction = absoluteDragTranslationY / draggableDistance
-                print("DRAG current fraction: \(currentDragFraction)")
                 
                 
                 if currentDragFraction >= 1 {
                     if isDownWards {
                         if dragEndState != .bottom {
-                            //withAnimation{
-                            playerViewContentHeight = kMinimizedStateContentHeight
-                            dragEndState = .bottom
-                            //}
+                            shrinkToMinimized()
                         }
                     }
                     else {
                         if dragEndState != .top {
-                            // withAnimation {
                             playerViewContentHeight = self.viewSize.height - topStateContentOrigin
                             dragEndState = .top
                         }
-                        //}
-                        
                     }
                     return
                 }
@@ -205,7 +191,7 @@ struct PlayerContainerView: View {
                     }
                     
                     let targetHeight = max(kMinimizedStateContentHeight, (self.viewSize.height - topStateContentOrigin).rounded() * currentDragFraction)
-                    print("Drag Targetheight: \(targetHeight)")
+                    
                     playerViewContentHeight = targetHeight
                     
                 }
@@ -214,50 +200,47 @@ struct PlayerContainerView: View {
                     
                     dragEndState = .fraction(currentDragFraction)
                 }
-                if case .top = dragEndState, isDownWards {
+                else if case .top = dragEndState, isDownWards {
                     
                     dragEndState = .fraction(currentDragFraction)
                     
                 }
-                
-                if case .fraction = dragEndState {
+                else if case .fraction = dragEndState {
                     dragEndState = .fraction(currentDragFraction)
                     
                 }
-                
-               
-               // print("DragFraction: \(currentDragFraction)")
 
             })
             .onEnded({ dragValue in
-                print("DRAG onEnded")
-                if dragValue.location.y <= topStateContentOrigin {
+
+                if case .fraction = dragEndState {
                     withAnimation{
-                        dragEndState = .top
-//                            isFullContentVisible = true
-                    }
-                }
-                else if dragValue.location.y >= bottomStateContentOrigin {
-                    withAnimation {
-                        dragEndState = .bottom
-//                            isFullContentVisible = false
-                    }
-                    
-                }
-                else if case .fraction(let fracValue) = dragEndState {
-                    if fracValue > 0.5 {
-                        withAnimation(.linear(duration: 0.3)) {
-                            dragEndState = .top
-//                                isFullContentVisible = true
+                        if abs(currentDragOffsetY) > kDragToAnimationThreshold {
+                            //proceed with animation to the target edge
+                            if currentDragOffsetY < 0 {
+                                //was dragging to the top
+                                expandToFullSize()
+                            }
+                            else {
+                                //was dragging to the bottom
+                                shrinkToMinimized()
+                            }
+                        }
+                        else {
+                            //return back to the starting edge
+                            if currentDragOffsetY > 0 {
+                                //was dragging to the bottom
+                                expandToFullSize()
+                            }
+                            else {
+                                //was dragging to the top
+                                shrinkToMinimized()
+                            }
                         }
                     }
-                    if fracValue < 0.5 {
-                        withAnimation(.snappy(duration: 0.2)) {
-                            dragEndState = .bottom
-                        }
-                    }
+                    currentDragOffsetY = 0.0
+                    dragStartY = 0.0
                 }
-                
             })
         )
         .onPreferenceChange(ViewSizeKey.self, perform: {size in
@@ -268,28 +251,17 @@ struct PlayerContainerView: View {
             self.topStateContentOrigin = size.height - contentHeightMax
             self.bottomStateContentOrigin = contentHeightMin
             
-            print("onPreferenceChange Size: \(size.height), partialContentHeightMax: \(contentHeightMax)")
+//            print("onPreferenceChange Size: \(size.height), partialContentHeightMax: \(contentHeightMax)")
         })
-        .onChange(of: topStateContentOrigin) { _, originY in
-            print("Player Content Max Height originY: \(originY)")
-        }
-        .onChange(of: bottomStateContentOrigin, {_ , bottomOrigin in
-            print("Player Content Min Height originY: \(bottomOrigin)")
-        })
-        .onChange(of: dragEndState) { _, newState in
-            print("onChange dragEndState: \(newState)")
-            switch newState {
-            case .top:
-                
-                break
-            case .bottom:
-                
-                break
-            case .fraction:
-                break
-            }
-            
-        }
+//        .onChange(of: topStateContentOrigin) { _, originY in
+//            print("Player Content Max Height originY: \(originY)")
+//        }
+//        .onChange(of: bottomStateContentOrigin, {_ , bottomOrigin in
+//            print("Player Content Min Height originY: \(bottomOrigin)")
+//        })
+//        .onChange(of: dragEndState) { _, newState in
+//            print("onChange dragEndState: \(newState)")
+//        }
         
     }
 
@@ -298,12 +270,12 @@ struct PlayerContainerView: View {
         VStack(alignment: .leading) {
             Text(title)
                 .font(.largeTitle)
-                .padding(.vertical)
                 .lineLimit(3)
-            
+                .padding(.vertical)
+                
             Text(details)
-
         }
+        .multilineTextAlignment(.leading)
     }
     
     @ViewBuilder private var playerButtonsControls: some View {
@@ -312,23 +284,22 @@ struct PlayerContainerView: View {
     }
     
     @ViewBuilder private var dragDownAndCloseControls: some View {
+
         HStack{
-            RoundedRectangle(cornerRadius: 3)
-                .fill(.secondary)
-                .frame(width:100, height:6)
-                .padding(.top, 4)
-            
+                RoundedRectangle(cornerRadius: 3)
+                    .fill(.secondary)
+                    .frame(width:80, height:6)
+                    .padding(.top, 6)
         }
         .frame(height: 40, alignment: .top)
         .frame(maxWidth: .infinity)
-        .overlay(alignment: .trailing) {
+        .overlay(alignment: .trailing, content: {
+
             Button(action: {
                 print("close button tapped")
-//                isFullContentVisible = false
                 
                 withAnimation(.linear(duration: 0.2)){
-                    playerViewContentHeight = kMinimizedStateContentHeight
-                    dragEndState = .bottom
+                    shrinkToMinimized()
                 }
                 
             }, label: {
@@ -342,15 +313,24 @@ struct PlayerContainerView: View {
             .padding(.horizontal, 8)
             .padding(.top, 6)
             .disabled(dragEndState != .top || isDragging)
-        }
-        
+        })
+    }
+    
+    private func expandToFullSize() {
+        playerViewContentHeight = viewSize.height - topStateContentOrigin
+        dragEndState = .top
+    }
+    
+    private func shrinkToMinimized() {
+        playerViewContentHeight = kMinimizedStateContentHeight
+        dragEndState = .bottom
     }
 }
 
 #Preview {
-    @Previewable @State var progress:CGFloat = 0.4
+    @Previewable @State var status:PlayerStatus = .init()
+    @Bindable var pStatus = status
     PlayerContainerView(title:"Audio Title Long Name WWWWWWoo",
                         details: "Some Lorem Ipsum text Long text value presented here. Lorem Ipsum text Long text Lorem Ipsum text Long text Lorem Ipsum text Long text. dsfs df   df sdf xfb xcvb dbdfbgh45g fdg tgr",
-                        playerProgress: $progress,
-                        dismissHandler: {})
+                        playerProgress: $pStatus.playerProgress)
 }

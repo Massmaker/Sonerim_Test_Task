@@ -9,8 +9,10 @@ import SwiftUI
 
 struct PreiOS18DetailsView: View {
     var body: some View {
-        Text("Hello, World!")
-        
+        VStack {
+            Text("Hello, World!")
+            Text("Not Implemented")
+        }
     }
 }
 

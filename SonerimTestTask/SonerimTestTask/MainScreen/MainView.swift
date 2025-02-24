@@ -13,6 +13,7 @@ struct MainView: View {
     
     var body: some View {
         ZStack {
+            // a background taking full screen
             Color.accentColor
                 .opacity(0.5)
                 .ignoresSafeArea(edges:[.bottom, .top])
