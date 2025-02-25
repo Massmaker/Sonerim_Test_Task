@@ -14,7 +14,7 @@ struct RootView: View {
     var body: some View {
 
         if let details = rootModel.postDetails {
-            if #available(iOS 18.0, *) {
+            
                 FlickPostDetailsView(image: details.image,
                                      title: details.title,
                                      postData: details.detailsContainer,
@@ -22,10 +22,7 @@ struct RootView: View {
                                      dismissAction: rootModel.postDetailsGoHomeAction)
                 .environment(rootModel.playerStatus)
                 .transition(.asymmetric(insertion: .move(edge: .top), removal: .move(edge: .top)))
-            } else {
-                // Fallback on earlier versions
-                PreiOS18DetailsView()
-            }
+           
         }
         else {
             MainView(viewModel: rootModel.mainViewModel)
