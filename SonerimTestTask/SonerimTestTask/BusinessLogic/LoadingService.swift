@@ -24,7 +24,8 @@ final class URLSessionRequestService:RequestingService {
         self.decoder = decoder
     }
     
-    func request<RequestType>(_ request: RequestType) async throws -> RequestType.SuccessType where RequestType : Request {
+    /// - Returns: required SuccessType decoded from the URLResponse's  Data
+    func request<RequestType: Request>(_ request: RequestType) async throws -> RequestType.SuccessType {
         
         let data = try await requestDataFor(request)
         
@@ -44,7 +45,7 @@ final class URLSessionRequestService:RequestingService {
         
     }
     
-    
+    /// - Returns: Raw Data from the URLResponse if status code is 200...299
     func requestDataFor<RequestType:Request>(_ request: RequestType) async throws -> Data {
         let urlRequest = try request.asURLRequest()
         

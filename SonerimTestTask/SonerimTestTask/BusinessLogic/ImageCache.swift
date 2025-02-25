@@ -62,7 +62,7 @@ actor ImageCache : DataForURLCache {
     
     private func loadData(for link:Link) async throws -> Data {
         
-        let request = try MainViewDataRequestBuiilder.buildRequestForImage(with: link)
+        let request = try MainViewDataRequestBuilder.buildRequestForImage(with: link)
 //        print("Loading image")
         let imageData = try await loadingService.requestDataFor(request)
 //        print("Loaded image")
