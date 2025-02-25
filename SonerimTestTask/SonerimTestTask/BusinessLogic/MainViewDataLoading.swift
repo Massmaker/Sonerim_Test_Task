@@ -33,18 +33,11 @@ final class MainViewDataLoader: MainViewDataLoading {
         
         return Task {
             do {
-                let itemsRequest = try MainViewDataRequestBuiilder.buildRequestFor(category: category, resultType: CategoryItemsResponse.self)
-                
-//                let responseType = type(of:type(of: itemsRequest).SuccessType)
-//                
-//                guard responseType == CategoryItemsResponse.self else {
-//                    throw SearchError.notFound
-//                }
-//                
+                let itemsRequest = try MainViewDataRequestBuilder.buildRequestFor(category: category, resultType: CategoryItemsResponse.self)
                 
                 do{
                     
-                    let responsePerCategory:CategoryItemsResponse = try await requestService.request(itemsRequest) as! CategoryItemsResponse
+                    let responsePerCategory:CategoryItemsResponse = try await requestService.request(itemsRequest) as! CategoryItemsResponse //force unwrap will break if the response decoded value changes. This ensures that testing will reveal some problems early
                     
                     logger.notice("Finished loading posts info for \"\(category.name)\"")
                     

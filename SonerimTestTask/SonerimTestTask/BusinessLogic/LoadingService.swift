@@ -7,24 +7,22 @@
 
 import Foundation
 
-protocol RequestingService {
-    func request<RequestType:Request>(_ request: RequestType) async throws -> RequestType.SuccessType
-    func requestDataFor<RequestType:Request>(_ request: RequestType) async throws -> Data
-}
+
 
 
 final class URLSessionRequestService:RequestingService {
     
-    private let session:URLSession
+    private let session:Session
     
     private let decoder:JSONDecoder
     
-    init(session:URLSession = URLSession(configuration:.default), decoder: JSONDecoder = JSONDecoder()) {
+    init(session: some Session = URLSession(configuration:.default), decoder: JSONDecoder = JSONDecoder()) {
         self.session = session
         self.decoder = decoder
     }
     
-    func request<RequestType>(_ request: RequestType) async throws -> RequestType.SuccessType where RequestType : Request {
+    /// - Returns: required SuccessType decoded from the URLResponse's  Data
+    func request<RequestType: Request>(_ request: RequestType) async throws -> RequestType.SuccessType {
         
         let data = try await requestDataFor(request)
         
@@ -44,18 +42,15 @@ final class URLSessionRequestService:RequestingService {
         
     }
     
-    
+    /// - Returns: Raw Data from the URLResponse if status code is 200...299
     func requestDataFor<RequestType:Request>(_ request: RequestType) async throws -> Data {
-        let urlRequest = try request.asURLRequest()
+//        let urlRequest = try request.asURLRequest()
         
         do {
-            let (data, urlResponse) = try await session.data(for: urlRequest)
-            guard let httpResponse = urlResponse as? HTTPURLResponse else {
-                throw ResponseError.invalidResponse(urlResponse)
-            }
-            
-            guard httpResponse.statusCode / 100 == 2 else { //something in range 200...299
-                throw ResponseError.invalidStatusCode(httpResponse.statusCode)
+            let (data, response) = try await session.data(for: request)
+            let code = response.statusCode
+            guard code / 100 == 2 else { //something in range 200...299
+                throw ResponseError.invalidStatusCode(code)
             }
             
             return data
@@ -68,8 +63,69 @@ final class URLSessionRequestService:RequestingService {
 }
 
 
-protocol Session {
-    associatedtype Request
-    func data(for: Request) async throws -> Data?
+
+extension HTTPURLResponse:Response {} //statusCode
+
+extension URLSession:Session {
+    func data<T>(for request: T) async throws -> (Data, any Response) where T : Request {
+        let urlRequest = try request.asURLRequest()
+        
+        let (data, response) = try await self.data(for: urlRequest)
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw ResponseError.invalidResponse(response)
+        }
+        
+        return (data,httpResponse)
+    }
+    
 }
 
+
+
+protocol ConvertibleToURLRequest {
+    func asURLRequest() throws -> URLRequest
+}
+
+extension Request {
+    func asURLRequest() throws -> URLRequest {
+        
+        guard let url = URL(string: path) else {
+            throw URLError(.badURL)
+        }
+        
+        let resultURL:URL
+        
+        if parameters.isEmpty {
+            resultURL = url
+        }
+        else {
+            let quesyItems:[URLQueryItem] =
+            parameters
+                .filter({!$0.key.isEmpty && !$0.value.isEmpty})
+                .compactMap({ key, value in
+                    return URLQueryItem(name: key, value: value)
+                })
+            
+            resultURL = url.appending(queryItems:quesyItems)
+        }
+        
+        var urlRequest = URLRequest(url: resultURL)
+        
+        urlRequest.httpMethod = method
+        
+        if !headers.isEmpty {
+            headers
+                .filter({!$0.key.isEmpty && !$0.value.isEmpty})
+                .forEach({
+                urlRequest.setValue($0.value, forHTTPHeaderField: $0.key)
+            })
+        }
+        
+        guard let data = body, !data.isEmpty else {
+            return urlRequest
+        }
+        
+        urlRequest.httpBody = data
+        return urlRequest
+    }
+}
