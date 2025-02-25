@@ -13,60 +13,61 @@ fileprivate let logger = Logger(subsystem: "DataLoading", category: "MainViewDat
 #else
 fileprivate let logger = Logger(.disabled)
 #endif
+
 protocol MainViewDataLoading {
-    
-    func loadMainViewPosts(forCategories categories:[ItemCategory]) async -> [ItemCategory:[PostItem]]
+    func loadMainViewPosts(forCategory category:ItemCategory) ->  Task<[PostItem], Error>
 }
 
-
-actor MainViewDataLoader: MainViewDataLoading {
+final class MainViewDataLoader: MainViewDataLoading {
     
-    typealias ResultPublisher = AnyPublisher<[ItemCategory : [PostItem]], any Error>
+    //typealias ResultPublisher = AnyPublisher<[ItemCategory : [PostItem]], any Error>
     
     let requestService: any RequestingService
     
     init(service:some RequestingService) {
         requestService = service
     }
+   
     
-    /// - Returns:  [ItemCategory:[PostItem]]
-    func loadMainViewPosts(forCategories categories:[ItemCategory]) async -> [ItemCategory:[PostItem]] {
+    func loadMainViewPosts(forCategory category:ItemCategory) -> Task<[PostItem], Error> {
         
-        var results:[ItemCategory:[PostItem]] = [:]
-        
-        for aCat in categories {
-            
+        return Task {
             do {
-                let itemsRequest = try MainViewDataRequestBuiilder.buildRequestFor(category: aCat, resultType: CategoryItemsResponse.self)
-                    
+                let itemsRequest = try MainViewDataRequestBuiilder.buildRequestFor(category: category, resultType: CategoryItemsResponse.self)
+                
+//                let responseType = type(of:type(of: itemsRequest).SuccessType)
+//                
+//                guard responseType == CategoryItemsResponse.self else {
+//                    throw SearchError.notFound
+//                }
+//                
+                
                 do{
-                    let responsePerCategory = try await requestService.request(itemsRequest)
-                    logger.notice("Finished loading posts info for \"\(aCat.name)\"")
-                    if let response = responsePerCategory as? CategoryItemsResponse {
-                        
-                        if !response.items.isEmpty {
-                            results[aCat] = response.items
-                        }
-                    }
+                    
+                    let responsePerCategory:CategoryItemsResponse = try await requestService.request(itemsRequest) as! CategoryItemsResponse
+                    
+                    logger.notice("Finished loading posts info for \"\(category.name)\"")
+                    
+                    return responsePerCategory.items
                 }
                 catch (let loadingError) {
 #if DEBUG
-                    print("Error loading posts per category: \(aCat.name): \(loadingError)")
+                    print("Error loading posts per category: \(category.name): \(loadingError)")
 #endif
+                    throw loadingError
                 }
+                
                 
             }
             catch (let requestBuildingError) {
 #if DEBUG
                 print("\(#function) Request Building Error: \(requestBuildingError)")
+                throw requestBuildingError
 #endif
             }
         }
-        
-        
-        
-        
-        return results
     }
+    
+    
     
 }

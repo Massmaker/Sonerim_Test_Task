@@ -25,28 +25,14 @@ final class RootModel {
         
         let mainModel = Factory.createMainModel(forCategories: categories,
                                                 postDataStore: postsStore,
-                                                imageCache: imageCache)
-        
-        mainModel.setPostForCategoryHandler {[unowned self] category, selectedPostInfo in
-            
-            let image = selectedPostInfo.image ?? UIImage(named: "DummyImage")!
-            
-            Task {[image] in
-                
-                do {
-                    let storedPostData = try await postsStore.postItem(inCategory: category, forPostInfo: selectedPostInfo)
-                    withAnimation{
-                        self.postDetails = PostDetails(title: storedPostData.title, image: image, detailsContainer: storedPostData)
-                    }
-                    
-                }
-                catch (let postsStoreError) {
-#if DEBUG
-                    print("Error finding tapped post: \(postsStoreError)")
-#endif
-                }
+                                                imageCache: imageCache,
+                                                postDetailsSelectionHandler: {detailsInfo in
+
+            withAnimation {[weak self] in
+                self?.postDetails = detailsInfo
             }
-        }
+        })
+        
         
         let viewModel = MainViewViewModel(model: mainModel)
         
@@ -102,12 +88,39 @@ fileprivate class Factory {
     @MainActor
     static func createMainModel(forCategories categories:[ItemCategory],
                                 postDataStore: some PostsDataStore,
-                                imageCache: some DataForURLCache) -> MainViewModel {
+                                imageCache: some DataForURLCache,
+                                postDetailsSelectionHandler:@escaping(PostDetails) -> ()) -> MainViewModel {
         
         let mainModel = MainViewModel(categories: categories,
                                       dataCache: postDataStore,
-                                      imagesCache: imageCache) { _, _ in
+                                      imagesCache: imageCache) { inCategory, selectedPostInfo in
             
+            Task {
+                
+                do {
+                    let postItems = try await postDataStore.postItems(inCategory: inCategory)
+                
+                    var postImage:UIImage
+                    if let imageData = await imageCache.readData(forLink: selectedPostInfo.id),
+                       let aUIImage = UIImage(data: imageData) {
+                        postImage = aUIImage
+                    }
+                    else {
+                        postImage = UIImage(named:"NoPostImage")!
+                    }
+                
+                    if let storedPostData = postItems.first(where: {$0.postId == selectedPostInfo.id}) {
+                        
+                        postDetailsSelectionHandler(PostDetails(title: storedPostData.title, image: postImage, detailsContainer: storedPostData))
+                    }
+                    
+                }
+                catch (let postsStoreError) {
+#if DEBUG
+                    print("Error finding tapped post: \(postsStoreError)")
+#endif
+                }
+            }
         }
         
         return mainModel

@@ -60,7 +60,7 @@ extension Request {
     }
 }
 
-struct GetMailViewDataRequest<SuccessType> : Request {
+struct GetMainViewDataRequest<SuccessType> : Request {
     typealias SuccessType = CategoryItemsResponse
     
     private(set) var path: String
@@ -109,7 +109,7 @@ final class MainViewDataRequestBuiilder {
         //using only the new APIs for making URLQueryItems
         let parameters = ["format": "json", "nojsoncallback":"1", "tags": category.name]
         
-        let aRequest = GetMailViewDataRequest<Result.Type>(path: appendedPathString,
+        let aRequest = GetMainViewDataRequest<Result.Type>(path: appendedPathString,
                                               parameters: parameters, requestMethod: .get)
         
         return aRequest

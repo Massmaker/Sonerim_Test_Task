@@ -23,6 +23,7 @@ class PostInfo {
 }
 
 extension PostInfo:Identifiable {
+    /// mediaURLString
     var id:String {
         get{
             mediaURLString

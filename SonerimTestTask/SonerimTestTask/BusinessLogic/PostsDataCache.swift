@@ -9,81 +9,79 @@ import Foundation
 import Combine
 
 protocol PostsDataStore {
-    var dataPublisher: any Publisher<[ItemCategory:[PostItem]], any Error> { get }
-    func startLoading()
+    func postItems(inCategory cat:ItemCategory) async throws -> [PostItem]
+}
+ 
+enum PostsProgress {
+    case inProgress(Task<[PostItem], Error>)
+    case ready([PostItem])
+}
+
+final class ProgressEnumContainer {
+    var wrapped:PostsProgress
+    init(_ wrapped: PostsProgress) {
+        self.wrapped = wrapped
+    }
 }
 
 
-
-actor PostsDataCache {
+actor PostsDataCache:PostsDataStore {
     
     private(set) var categories:[ItemCategory] {
         didSet {
             if oldValue != categories {
-                cachedData.removeAll()
-                startLoading()
+                dataCache.removeAllObjects()
             }
         }
     }
     
     let dataLoader: any MainViewDataLoading
-    var cachedData: [ItemCategory:[PostItem]] {
-        didSet {
-            cvPublisher?.send(cachedData)
-        }
-    }
+    private var dataCache:NSCache<NSString,ProgressEnumContainer>
+    
     private var isLoadingData:Bool = false
-    private var cvPublisher:CurrentValueSubject<[ItemCategory:[PostItem]], Error>?
+    
     
     init(categories: [ItemCategory],
          postsItemsLoaded: [ItemCategory : [PostItem]] = [:],
          loader: some MainViewDataLoading) {
         
         self.categories = categories
-        self.cachedData = postsItemsLoaded
+        self.dataCache = .init()
         self.dataLoader = loader
     }
     
-    
-    
-    func postItem(inCategory cat:ItemCategory, forPostInfo postInfo:PostInfo) async throws -> PostItem {
+    func postItems(inCategory cat:ItemCategory) async throws -> [PostItem] {
         
-        if let loadedItems = cachedData[cat],
-           let firstIndex = loadedItems.firstIndex(where: {$0.postId == postInfo.id}) {
-            
-            let postItem = loadedItems[firstIndex]
-            return postItem
+        if let progressContainer = dataCache[cat.name] {
+            switch progressContainer.wrapped {
+            case .ready(let postItems):
+                return postItems
+                
+            case .inProgress(let task):
+                return try await task.value
+            }
         }
         
-        throw SearchError.notFound
+        //start new loading query
+        
+        let newTask:Task<[PostItem], any Error> = Task {
+            try await dataLoader.loadMainViewPosts(forCategory: cat).value
+        }
+        
+        dataCache[cat.name] = ProgressEnumContainer(PostsProgress.inProgress(newTask))
+        
+        do {
+            let loadedPosts =  try await newTask.value
+            
+            dataCache[cat.name] = ProgressEnumContainer(PostsProgress.ready(loadedPosts))
+            
+            return loadedPosts
+        }
+        catch(let loadingError) {
+            dataCache[cat.name] = nil
+            throw loadingError
+        }
+        
     }
 }
 
-extension PostsDataCache: @preconcurrency PostsDataStore {
-    
-    var dataPublisher: any Publisher<[ItemCategory:[PostItem]], any Error> {
-        
-        if let existing = cvPublisher {
-            return existing
-        }
-        
-        let cvPublisher = CurrentValueSubject<[ItemCategory:[PostItem]], Error>([ItemCategory : [PostItem]]())
-        self.cvPublisher = cvPublisher
-        
-        return cvPublisher
-    }
-    
-    func startLoading() {
-        if isLoadingData {
-            return
-        }
-        
-        isLoadingData = true
-        
-        Task {
-            let loadedData = await dataLoader.loadMainViewPosts(forCategories: categories)
-            self.cachedData = loadedData
-            isLoadingData = false
-        }
-    }
-}

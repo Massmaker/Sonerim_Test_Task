@@ -5,7 +5,7 @@
 //  Created by Ivan_Tests on 19.02.2025.
 //
 
-import Combine
+
 import Observation
 import UIKit
 
@@ -32,13 +32,22 @@ final class MainViewModel {
     @ObservationIgnored
     let imageCache: any DataForURLCache
     @ObservationIgnored
-    private(set) var postSelectionHandler: PostForCategoryHandler
+    private(set) var postSelectionHandler: PostForCategoryHandler = {category, selectedPost  in
+        
+    }
     
     //MARK: private properties
     private(set) var loadedPosts:[ItemCategory:[PostInfo]] = [:]
     private(set) var isLoading:Bool = false
-    @ObservationIgnored
-    private var dataLoadingCancellable:AnyCancellable?
+    
+    //some lazy "Is Loading" handling
+    private var pendingTasksCount:Int = 0 {
+        didSet {
+            if pendingTasksCount < 1 && isLoading {
+                isLoading = false
+            }
+        }
+    }
     
     init(categories: [ItemCategory],
          dataCache postsCache: some PostsDataStore,
@@ -49,54 +58,6 @@ final class MainViewModel {
         self.imageCache = cache
         
         self.postSelectionHandler = selectionHandler
-        subscribeForDataLoading()
-    }
-    
-    private func subscribeForDataLoading() {
-        dataLoadingCancellable =
-        postsCache.dataPublisher.eraseToAnyPublisher()
-            .receive(on: DispatchQueue.main)
-            
-            .sink {[weak self] compl in
-                guard let self, case .failure(let error) = compl else {
-                    return
-                }
-                
-                //TODO: Handle possible loading errors if needed
-                
-                logger.warning("Error Loading Posts info: \(error)")
-                
-                if self.isLoading {
-                    self.isLoading = false
-                }
-                
-            } receiveValue: { [weak self] loadedItems in
-                guard let self else {
-                    return
-                }
-                
-                if self.isLoading {
-                    logger.notice("Finished loading Post Items")
-                }
-                
-                var result = [ItemCategory:[PostInfo]]()
-                
-                for (category, posts) in loadedItems {
-                    
-                    let uiPosts = posts.map({ item in
-                        return PostInfo(title: item.title, mediaURLString: item.media.m)
-                    })
-                    
-                    result[category] = uiPosts
-                }
-                
-                self.loadedPosts = result
-                
-                if self.isLoading {
-                    self.isLoading = false
-                }
-            }
-        
     }
     
     func startLoadingData() {
@@ -106,7 +67,27 @@ final class MainViewModel {
         
         isLoading = true
         
-        postsCache.startLoading()
+        pendingTasksCount = categories.count
+        
+        for category in categories {
+            
+            
+            let task = Task {
+                do {
+                    let posts = try await postsCache.postItems(inCategory: category)
+                    self.loadedPosts[category] = posts.map({ postItem in
+                        PostInfo(title: postItem.title, mediaURLString: postItem.media.m)
+                    })
+                }
+                catch (let loadingError) {
+                    logger.error("Failed to load posts for '\(category.name)': \(loadingError)")
+                }
+                
+                pendingTasksCount -= 1 // potentially could data race, but in real world URLRequests responses handling decreasig an Int takes really no time
+            }
+            
+            
+        }
     }
     
     func checkImageForPost(_ postId:String, inCategory category:ItemCategory) {
