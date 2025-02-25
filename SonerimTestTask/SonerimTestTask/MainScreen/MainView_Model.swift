@@ -71,8 +71,7 @@ final class MainViewModel {
         
         for category in categories {
             
-            
-            let task = Task {
+            Task {
                 do {
                     let posts = try await postsCache.postItems(inCategory: category)
                     self.loadedPosts[category] = posts.map({ postItem in
