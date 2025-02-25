@@ -59,7 +59,7 @@ final class RootModel {
             }
             catch {
 #if DEBUG
-                print("Failed loading of the Default Categories: \(error)")
+                print("Failed loading the Default Categories from app Bundle: \(error)")
 #endif
             }
         }
