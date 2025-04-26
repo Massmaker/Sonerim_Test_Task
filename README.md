@@ -19,9 +19,9 @@
 
 The only object used for requesting data is `URLSessionRequestService`, which handles those types of Requests by returning werher a Raw response Data or the asked SuccessType object.
 
-The URL Requests are build using separate cless `MainViewDataRequestBuiilder`
+The URL Requests are build using separate class `MainViewDataRequestBuiilder`
 
-There was an attempt to devide networking logic and responsibilities into several classes as well as View models make more agnostic of underlying data providers.
+There was an attempt to devide networking logic and responsibilities into several classes as well as to make View Models more agnostic of underlying data providers.
 
  - App Workflow:
 
